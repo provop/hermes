@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Hermes AI</string>
+    <string name="quick_tile_label">Hermes Listen</string>
+    <string name="accessibility_service_desc">Hermes AI hardware trigger service for volume button hotkey voice activation.</string>
+</resources>

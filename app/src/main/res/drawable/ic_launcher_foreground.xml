@@ -1,0 +1,61 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Center glowing circle glow -->
+    <path
+        android:fillColor="#1500F0FF"
+        android:pathData="M54,54m-34,0a34,34 0,1 1,68 0a34,34 0,1 1,-68 0" />
+
+    <!-- Left Hermes Wing -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M48,46 C44,34 32,28 22,30 C26,38 34,44 44,48 C36,46 26,48 20,56 C26,59 36,60 46,55 Z" />
+    <path
+        android:fillColor="#80E5FF"
+        android:pathData="M46,42 C40,34 30,30 25,32 C30,38 38,42 46,42 Z" />
+
+    <!-- Right Hermes Wing -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M60,46 C64,34 76,28 86,30 C82,38 74,44 64,48 C72,46 82,48 88,56 C82,59 72,60 62,55 Z" />
+    <path
+        android:fillColor="#80E5FF"
+        android:pathData="M62,42 C68,34 78,30 83,32 C78,38 70,42 62,42 Z" />
+
+    <!-- Central Neural Voice Node / Mic Emblem -->
+    <path
+        android:fillColor="#00F0FF"
+        android:pathData="M54,34 C50,34 46.5,37.5 46.5,42 L46.5,56 C46.5,60.5 50,64 54,64 C58,64 61.5,60.5 61.5,56 L61.5,42 C61.5,37.5 58,34 54,34 Z" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M41,51 C41,58.2 46.8,64 54,64 C61.2,64 67,58.2 67,51" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M54,64 L54,73 M47,73 L61,73" />
+
+    <!-- Radiating Soundwaves in Electric Gold & Cyan -->
+    <path
+        android:strokeColor="#FFD54F"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M35,42 C33,46 33,52 35,56" />
+    <path
+        android:strokeColor="#FFD54F"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M73,42 C75,46 75,52 73,56" />
+
+    <!-- Messenger Star / AI Sparkle -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M54,23 L55.5,27 L59.5,28.5 L55.5,30 L54,34 L52.5,30 L48.5,28.5 L52.5,27 Z" />
+</vector>
