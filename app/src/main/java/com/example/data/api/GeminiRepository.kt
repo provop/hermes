@@ -13,8 +13,8 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 sealed class GeminiResponse {
-    data class Text(val content: String) : GeminiResponse()
-    data class ToolCall(val functionName: String, val arguments: Map<String, Any?>, val speechResponse: String) : GeminiResponse()
+    data class Text(val content: String, val audioBytes: ByteArray? = null) : GeminiResponse()
+    data class ToolCall(val functionName: String, val arguments: Map<String, Any?>, val speechResponse: String, val audioBytes: ByteArray? = null) : GeminiResponse()
     data class Error(val errorMessage: String) : GeminiResponse()
 }
 
@@ -240,19 +240,20 @@ class GeminiRepository {
     fun resolveValidModelName(requested: String?): String {
         val req = requested?.trim() ?: ""
         return when {
+            req.contains("tts", ignoreCase = true) || req.contains("native", ignoreCase = true) || req.contains("2.5", ignoreCase = true) -> "gemini-2.5-flash-preview-tts"
             req.contains("3.1", ignoreCase = true) || req.contains("pro", ignoreCase = true) -> "gemini-3.1-pro-preview"
             req.contains("lite", ignoreCase = true) -> "gemini-3.1-flash-lite-preview"
             req.contains("thinking", ignoreCase = true) -> "gemini-3.1-pro-preview"
-            req.contains("live", ignoreCase = true) || req.contains("native-audio", ignoreCase = true) -> "gemini-3.5-flash"
-            req == "gemini-3.5-flash" || req == "gemini-3.1-pro-preview" || req == "gemini-3.1-flash-lite-preview" -> req
+            req.contains("live", ignoreCase = true) -> "gemini-2.5-flash-preview-tts"
+            req == "gemini-3.5-flash" || req == "gemini-3.1-pro-preview" || req == "gemini-3.1-flash-lite-preview" || req == "gemini-2.5-flash-preview-tts" -> req
             req.isNotBlank() -> req
-            else -> "gemini-3.5-flash"
+            else -> "gemini-2.5-flash-preview-tts"
         }
     }
 
     suspend fun testApiKey(
         candidateKey: String,
-        modelName: String = "gemini-3.5-flash"
+        modelName: String = "gemini-2.5-flash-preview-tts"
     ): Pair<Boolean, String> = withContext(Dispatchers.IO) {
         val cleanKey = candidateKey.trim()
         if (cleanKey.isBlank()) {
@@ -288,7 +289,7 @@ class GeminiRepository {
                 val fbReq = Request.Builder().url(fallbackUrl).post(requestBody).build()
                 val fbResp = client.newCall(fbReq).execute()
                 if (fbResp.isSuccessful) {
-                    Pair(true, "API key valid with standard model 'gemini-3.5-flash'!")
+                    Pair(true, "API key valid with fallback model 'gemini-3.5-flash'!")
                 } else {
                     val fbBody = fbResp.body?.string() ?: ""
                     val errorMsg = try {
@@ -382,13 +383,26 @@ class GeminiRepository {
                     })
                 })
 
-                // Generation Config with Extended Thinking
+                // Generation Config with Extended Thinking and Native Audio Modality
                 put("generationConfig", JSONObject().apply {
                     put("temperature", 0.7)
                     put("topP", 0.95)
                     if (withThinking && enableExtendedThinking && targetModel.contains("pro")) {
                         put("thinkingConfig", JSONObject().apply {
                             put("thinkingLevel", "high")
+                        })
+                    }
+                    if (targetModel.contains("tts") || targetModel.contains("2.5")) {
+                        put("responseModalities", JSONArray().apply {
+                            put("TEXT")
+                            put("AUDIO")
+                        })
+                        put("speechConfig", JSONObject().apply {
+                            put("voiceConfig", JSONObject().apply {
+                                put("prebuiltVoiceConfig", JSONObject().apply {
+                                    put("voiceName", "Aoede")
+                                })
+                            })
                         })
                     }
                 })
@@ -437,6 +451,24 @@ class GeminiRepository {
                 return@withContext GeminiResponse.Error("Empty content received from Gemini.")
             }
 
+            // Extract native audio bytes if returned by Gemini (e.g. from gemini-2.5-flash-preview-tts)
+            var extractedAudioBytes: ByteArray? = null
+            for (i in 0 until parts.length()) {
+                val part = parts.getJSONObject(i)
+                if (part.has("inlineData")) {
+                    val inlineData = part.getJSONObject("inlineData")
+                    val mime = inlineData.optString("mimeType", "")
+                    val b64 = inlineData.optString("data", "")
+                    if (b64.isNotBlank() && (mime.contains("audio", ignoreCase = true) || mime.isBlank())) {
+                        try {
+                            extractedAudioBytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+                        } catch (e: Exception) {
+                            Log.w("GeminiRepo", "Failed to decode native audio data", e)
+                        }
+                    }
+                }
+            }
+
             // Check for functionCall
             for (i in 0 until parts.length()) {
                 val part = parts.getJSONObject(i)
@@ -471,7 +503,8 @@ class GeminiRepository {
                     return@withContext GeminiResponse.ToolCall(
                         functionName = fnName,
                         arguments = argsMap,
-                        speechResponse = speechText
+                        speechResponse = speechText,
+                        audioBytes = extractedAudioBytes
                     )
                 }
             }
@@ -485,9 +518,11 @@ class GeminiRepository {
                 }
             }
 
-            val resultText = textBuilder.toString().trim()
+            val resultText = textBuilder.toString().trim().ifBlank {
+                if (extractedAudioBytes != null) "Voice response generated." else ""
+            }
             if (resultText.isNotEmpty()) {
-                GeminiResponse.Text(resultText)
+                GeminiResponse.Text(resultText, extractedAudioBytes)
             } else {
                 GeminiResponse.Error("Gemini generated an empty text response.")
             }

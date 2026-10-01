@@ -216,7 +216,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
                             content = responseText
                         )
                     )
-                    speakOrNotify(responseText, currentSettings)
+                    speakOrNotify(responseText, currentSettings, geminiResult.audioBytes)
                 }
 
                 is GeminiResponse.ToolCall -> {
@@ -224,7 +224,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
                         geminiResult.functionName,
                         geminiResult.arguments,
                         geminiResult.speechResponse,
-                        currentSettings
+                        currentSettings,
+                        geminiResult.audioBytes
                     )
                 }
 
@@ -246,7 +247,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
         functionName: String,
         arguments: Map<String, Any?>,
         speechText: String,
-        settings: HermesSettingsEntity
+        settings: HermesSettingsEntity,
+        audioBytes: ByteArray? = null
     ) {
         var actionResult: ActionResult? = null
         var actionTitle = functionName
@@ -341,7 +343,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
         )
 
         _lastExecutedAction.value = actionTitle
-        speakOrNotify(fullResponse, settings)
+        speakOrNotify(fullResponse, settings, audioBytes)
     }
 
     private suspend fun relayToTelegramHermes(text: String, settings: HermesSettingsEntity) {
@@ -411,11 +413,20 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun speakOrNotify(speechContent: String, settings: HermesSettingsEntity) {
+    private fun speakOrNotify(speechContent: String, settings: HermesSettingsEntity, audioBytes: ByteArray? = null) {
         _statusMessage.value = speechContent
         if (settings.autoSpeakResponses) {
             _status.value = AssistantStatus.SPEAKING
-            voiceManager.speak(speechContent, settings.speechPitch, settings.speechRate)
+            if (audioBytes != null && audioBytes.isNotEmpty()) {
+                val played = voiceManager.playNativeAudio(audioBytes) {
+                    _status.value = AssistantStatus.IDLE
+                }
+                if (!played) {
+                    voiceManager.speak(speechContent, settings.speechPitch, settings.speechRate)
+                }
+            } else {
+                voiceManager.speak(speechContent, settings.speechPitch, settings.speechRate)
+            }
         } else {
             _status.value = AssistantStatus.IDLE
         }

@@ -326,12 +326,17 @@ fun HardwareTriggersScreen(
 
                 val availableModels = listOf(
                     Triple(
-                        "Gemini 3.5 Flash (Recommended)",
-                        "gemini-3.5-flash",
-                        "Ultra-fast voice assistant with vision & device tool calling"
+                        "Gemini 2.5 Flash Native Voice (Recommended)",
+                        "gemini-2.5-flash-preview-tts",
+                        "Human-like realistic voice synthesized directly by Gemini (No robotic TTS)"
                     ),
                     Triple(
-                        "Gemini Live 3.8 Extended Thinking",
+                        "Gemini 3.5 Flash",
+                        "gemini-3.5-flash",
+                        "Ultra-fast multimodal intelligence with vision & device control"
+                    ),
+                    Triple(
+                        "Gemini 3.1 Pro (Extended Thinking)",
                         "gemini-3.1-pro-preview",
                         "Deep multi-step reasoning with thinkingConfig budget"
                     ),

@@ -2,6 +2,7 @@ package com.example.voice
 
 import android.content.Context
 import android.content.Intent
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -9,6 +10,8 @@ import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
+import java.io.File
+import java.io.FileOutputStream
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -164,11 +167,53 @@ class VoiceSpeechManager(private val context: Context) {
         textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "hermes_utterance_${System.currentTimeMillis()}")
     }
 
+    private var mediaPlayer: MediaPlayer? = null
+
+    fun playNativeAudio(audioBytes: ByteArray, onDone: (() -> Unit)? = null): Boolean {
+        return try {
+            stopSpeaking()
+            val tempFile = File.createTempFile("hermes_gemini_native", ".mp3", context.cacheDir)
+            FileOutputStream(tempFile).use { it.write(audioBytes) }
+            tempFile.deleteOnExit()
+
+            mediaPlayer?.release()
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(tempFile.absolutePath)
+                setOnPreparedListener {
+                    _isSpeaking.value = true
+                    start()
+                }
+                setOnCompletionListener {
+                    _isSpeaking.value = false
+                    try { tempFile.delete() } catch (_: Exception) {}
+                    onDone?.invoke()
+                }
+                setOnErrorListener { _, _, _ ->
+                    _isSpeaking.value = false
+                    try { tempFile.delete() } catch (_: Exception) {}
+                    false
+                }
+                prepareAsync()
+            }
+            true
+        } catch (e: Exception) {
+            Log.e("VoiceSpeechManager", "Error playing Gemini native audio: ${e.message}", e)
+            _isSpeaking.value = false
+            false
+        }
+    }
+
     fun stopSpeaking() {
+        if (mediaPlayer?.isPlaying == true) {
+            mediaPlayer?.stop()
+        }
+        mediaPlayer?.release()
+        mediaPlayer = null
+
         if (isTtsInitialized) {
             textToSpeech?.stop()
-            _isSpeaking.value = false
         }
+        _isSpeaking.value = false
     }
 
     fun destroy() {
