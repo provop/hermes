@@ -207,7 +207,8 @@ fun HermesBridgeScreen(
                             volumeTrigger = settings?.volumeKeyTriggerEnabled ?: true,
                             autoSpeak = settings?.autoSpeakResponses ?: true,
                             pitch = settings?.speechPitch ?: 1.0f,
-                            rate = settings?.speechRate ?: 1.05f
+                            rate = settings?.speechRate ?: 1.05f,
+                            customApiKey = settings?.customGeminiApiKey ?: ""
                         )
                     },
                     label = {
@@ -321,7 +322,8 @@ fun HermesBridgeScreen(
                     volumeTrigger = settings?.volumeKeyTriggerEnabled ?: true,
                     autoSpeak = settings?.autoSpeakResponses ?: true,
                     pitch = settings?.speechPitch ?: 1.0f,
-                    rate = settings?.speechRate ?: 1.05f
+                    rate = settings?.speechRate ?: 1.05f,
+                    customApiKey = settings?.customGeminiApiKey ?: ""
                 )
             },
             shape = RoundedCornerShape(12.dp),

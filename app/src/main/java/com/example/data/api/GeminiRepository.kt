@@ -237,17 +237,66 @@ class GeminiRepository {
         return toolsArray
     }
 
+    suspend fun testApiKey(candidateKey: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+        val cleanKey = candidateKey.trim()
+        if (cleanKey.isBlank()) {
+            return@withContext Pair(false, "API key cannot be empty")
+        }
+
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$cleanKey"
+        try {
+            val requestJson = JSONObject().apply {
+                put("contents", JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("parts", JSONArray().apply {
+                            put(JSONObject().apply { put("text", "ping") })
+                        })
+                    })
+                })
+                put("generationConfig", JSONObject().apply {
+                    put("maxOutputTokens", 5)
+                })
+            }
+
+            val requestBody = requestJson.toString().toRequestBody(jsonMediaType)
+            val request = Request.Builder().url(url).post(requestBody).build()
+            val response = client.newCall(request).execute()
+            val responseBody = response.body?.string() ?: ""
+
+            if (response.isSuccessful) {
+                Pair(true, "API key is valid and working!")
+            } else {
+                val errorMsg = try {
+                    val root = JSONObject(responseBody)
+                    root.optJSONObject("error")?.optString("message") ?: "HTTP ${response.code}"
+                } catch (_: Exception) {
+                    "HTTP ${response.code}: $responseBody"
+                }
+                Pair(false, errorMsg)
+            }
+        } catch (e: Exception) {
+            Pair(false, "Network error: ${e.message}")
+        }
+    }
+
     suspend fun generateAssistantResponse(
         prompt: String,
         conversationHistory: List<Pair<String, String>> = emptyList(),
-        base64Image: String? = null
+        base64Image: String? = null,
+        apiKeyOverride: String? = null
     ): GeminiResponse = withContext(Dispatchers.IO) {
-        val apiKey = BuildConfig.GEMINI_API_KEY
-        if (apiKey.isBlank() || apiKey == "MY_GEMINI_API_KEY") {
-            return@withContext GeminiResponse.Error("Gemini API key is not configured. Please add GEMINI_API_KEY in the AI Studio Secrets panel.")
+        val effectiveApiKey = if (!apiKeyOverride.isNullOrBlank()) {
+            apiKeyOverride.trim()
+        } else {
+            val buildKey = BuildConfig.GEMINI_API_KEY
+            if (buildKey.isNotBlank() && buildKey != "MY_GEMINI_API_KEY") buildKey else ""
         }
 
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey"
+        if (effectiveApiKey.isBlank()) {
+            return@withContext GeminiResponse.Error("Gemini API key is not configured. Please add your own API key in Settings (BYOK) or via the Secrets panel.")
+        }
+
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$effectiveApiKey"
 
         try {
             val contentsArray = JSONArray()

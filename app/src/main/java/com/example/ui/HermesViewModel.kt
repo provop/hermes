@@ -181,7 +181,12 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
             val history = messages.value.takeLast(6).map { it.sender to it.content }
 
             // Query Gemini with tool calling & device control
-            when (val geminiResult = geminiRepo.generateAssistantResponse(trimmed, history, base64Img)) {
+            when (val geminiResult = geminiRepo.generateAssistantResponse(
+                prompt = trimmed,
+                conversationHistory = history,
+                base64Image = base64Img,
+                apiKeyOverride = currentSettings.customGeminiApiKey
+            )) {
                 is GeminiResponse.Text -> {
                     val responseText = geminiResult.content
                     dao.insertMessage(
@@ -418,7 +423,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
         volumeTrigger: Boolean,
         autoSpeak: Boolean,
         pitch: Float,
-        rate: Float
+        rate: Float,
+        customApiKey: String = ""
     ) {
         viewModelScope.launch {
             val updated = HermesSettingsEntity(
@@ -429,12 +435,20 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
                 volumeKeyTriggerEnabled = volumeTrigger,
                 autoSpeakResponses = autoSpeak,
                 speechPitch = pitch,
-                speechRate = rate
+                speechRate = rate,
+                customGeminiApiKey = customApiKey
             )
             dao.saveSettings(updated)
             if (botToken.isNotBlank()) {
                 testTelegramConnection(botToken)
             }
+        }
+    }
+
+    fun testGeminiApiKey(key: String, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val result = geminiRepo.testApiKey(key)
+            onResult(result.first, result.second)
         }
     }
 

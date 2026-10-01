@@ -37,5 +37,6 @@ data class HermesSettingsEntity(
     val volumeKeyTriggerEnabled: Boolean = true,
     val autoSpeakResponses: Boolean = true,
     val speechPitch: Float = 1.0f,
-    val speechRate: Float = 1.05f
+    val speechRate: Float = 1.05f,
+    val customGeminiApiKey: String = ""
 )

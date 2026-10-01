@@ -21,26 +21,37 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Accessibility
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.VolumeDown
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,8 +65,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.BuildConfig
 import com.example.service.TriggerEventBus
 import com.example.service.TriggerSource
 import com.example.ui.HermesViewModel
@@ -66,8 +80,10 @@ import com.example.ui.theme.HermesDarkSurface
 import com.example.ui.theme.HermesDarkSurfaceVariant
 import com.example.ui.theme.HermesError
 import com.example.ui.theme.HermesGold
+import com.example.ui.theme.HermesSuccess
 import com.example.ui.theme.HermesTextPrimary
 import com.example.ui.theme.HermesTextSecondary
+import com.example.ui.theme.HermesWarning
 
 @Composable
 fun HardwareTriggersScreen(
@@ -90,6 +106,14 @@ fun HardwareTriggersScreen(
         mutableFloatStateOf(settings?.speechRate ?: 1.05f)
     }
 
+    var apiKeyInput by remember(settings) {
+        mutableStateOf(settings?.customGeminiApiKey ?: "")
+    }
+    var isKeyVisible by remember { mutableStateOf(false) }
+    var keyValidationMessage by remember { mutableStateOf<String?>(null) }
+    var isKeyValidating by remember { mutableStateOf(false) }
+    var isKeyValid by remember { mutableStateOf<Boolean?>(null) }
+
     val scrollState = rememberScrollState()
 
     Column(
@@ -101,17 +125,280 @@ fun HardwareTriggersScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            text = "Hardware Triggers & Shortcuts",
+            text = "Settings & Hardware Triggers",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = HermesTextPrimary
         )
         Text(
-            text = "Configure instant physical button access to awaken Hermes voice recognition.",
+            text = "Configure your own Gemini API key (BYOK), physical button triggers, and voice synthesis.",
             fontSize = 12.sp,
             color = HermesTextSecondary,
             modifier = Modifier.padding(top = 2.dp)
         )
+
+        // 0. Bring Your Own Key (BYOK) - Gemini AI
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = HermesDarkSurface),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, HermesDarkCardBorder, RoundedCornerShape(16.dp))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = CircleShape,
+                            color = HermesGold.copy(alpha = 0.15f),
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Key,
+                                    contentDescription = null,
+                                    tint = HermesGold,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Bring Your Own Key (BYOK)",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = HermesTextPrimary
+                            )
+                            Text(
+                                text = "Personal Gemini API Key",
+                                fontSize = 11.sp,
+                                color = HermesGold
+                            )
+                        }
+                    }
+
+                    // Status Pill
+                    val isCustomKeyActive = !settings?.customGeminiApiKey.isNullOrBlank()
+                    val hasDefaultKey = BuildConfig.GEMINI_API_KEY.isNotBlank() && BuildConfig.GEMINI_API_KEY != "MY_GEMINI_API_KEY"
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = when {
+                            isCustomKeyActive -> HermesSuccess.copy(alpha = 0.15f)
+                            hasDefaultKey -> HermesCyan.copy(alpha = 0.15f)
+                            else -> HermesWarning.copy(alpha = 0.15f)
+                        }
+                    ) {
+                        Text(
+                            text = when {
+                                isCustomKeyActive -> "BYOK Active"
+                                hasDefaultKey -> "Default Active"
+                                else -> "Key Missing"
+                            },
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = when {
+                                isCustomKeyActive -> HermesSuccess
+                                hasDefaultKey -> HermesCyan
+                                else -> HermesWarning
+                            },
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Supply your personal Gemini API key to power all voice intelligence, surrounding analysis, and tool calls. Keys are stored locally on your device.",
+                    fontSize = 12.sp,
+                    color = HermesTextSecondary,
+                    lineHeight = 18.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = apiKeyInput,
+                    onValueChange = {
+                        apiKeyInput = it
+                        isKeyValid = null
+                        keyValidationMessage = null
+                    },
+                    label = { Text("Gemini API Key", fontSize = 12.sp) },
+                    placeholder = { Text("AIzaSy...") },
+                    singleLine = true,
+                    visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (apiKeyInput.isNotBlank()) {
+                                IconButton(onClick = {
+                                    apiKeyInput = ""
+                                    isKeyValid = null
+                                    keyValidationMessage = null
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Clear,
+                                        contentDescription = "Clear key",
+                                        tint = HermesTextSecondary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            IconButton(onClick = { isKeyVisible = !isKeyVisible }) {
+                                Icon(
+                                    imageVector = if (isKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = "Toggle visibility",
+                                    tint = HermesTextSecondary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = HermesCyan,
+                        unfocusedBorderColor = HermesDarkCardBorder,
+                        focusedTextColor = HermesTextPrimary,
+                        unfocusedTextColor = HermesTextPrimary,
+                        focusedLabelColor = HermesCyan,
+                        unfocusedLabelColor = HermesTextSecondary
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("byok_api_key_input")
+                )
+
+                // Validation feedback banner
+                keyValidationMessage?.let { msg ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isKeyValid == true) HermesSuccess.copy(alpha = 0.15f) else HermesError.copy(alpha = 0.15f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (isKeyValid == true) Icons.Default.CheckCircle else Icons.Default.ErrorOutline,
+                                contentDescription = null,
+                                tint = if (isKeyValid == true) HermesSuccess else HermesError,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = msg,
+                                fontSize = 11.sp,
+                                color = if (isKeyValid == true) HermesSuccess else HermesError,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Test key button
+                    OutlinedButton(
+                        onClick = {
+                            if (apiKeyInput.isNotBlank()) {
+                                isKeyValidating = true
+                                keyValidationMessage = null
+                                viewModel.testGeminiApiKey(apiKeyInput) { success, msg ->
+                                    isKeyValidating = false
+                                    isKeyValid = success
+                                    keyValidationMessage = msg
+                                }
+                            } else {
+                                keyValidationMessage = "Enter an API key first."
+                                isKeyValid = false
+                            }
+                        },
+                        enabled = !isKeyValidating && apiKeyInput.isNotBlank(),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("test_byok_key_button")
+                    ) {
+                        if (isKeyValidating) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                strokeWidth = 2.dp,
+                                color = HermesCyan
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Testing...", fontSize = 11.sp, color = HermesCyan)
+                        } else {
+                            Text("Test Key", fontSize = 11.sp, color = HermesCyan)
+                        }
+                    }
+
+                    // Save BYOK button
+                    Button(
+                        onClick = {
+                            viewModel.updateSettings(
+                                botToken = settings?.telegramBotToken ?: "",
+                                chatId = settings?.telegramChatId ?: "",
+                                mode = settings?.mode ?: "HYBRID",
+                                volumeTrigger = volumeTriggerEnabled,
+                                autoSpeak = autoSpeakEnabled,
+                                pitch = speechPitch,
+                                rate = speechRate,
+                                customApiKey = apiKeyInput.trim()
+                            )
+                            keyValidationMessage = "BYOK API Key saved successfully!"
+                            isKeyValid = true
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = HermesCyan),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("save_byok_key_button")
+                    ) {
+                        Text("Save Key", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+                }
+
+                // Revert button if custom key is currently set
+                if (!settings?.customGeminiApiKey.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = {
+                            apiKeyInput = ""
+                            viewModel.updateSettings(
+                                botToken = settings?.telegramBotToken ?: "",
+                                chatId = settings?.telegramChatId ?: "",
+                                mode = settings?.mode ?: "HYBRID",
+                                volumeTrigger = volumeTriggerEnabled,
+                                autoSpeak = autoSpeakEnabled,
+                                pitch = speechPitch,
+                                rate = speechRate,
+                                customApiKey = ""
+                            )
+                            keyValidationMessage = "Reverted to default BuildConfig key."
+                            isKeyValid = true
+                        },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text(
+                            text = "Clear BYOK & Revert to App Default Key",
+                            fontSize = 11.sp,
+                            color = HermesTextSecondary
+                        )
+                    }
+                }
+            }
+        }
 
         // 1. Power Button / Assist Gesture Trigger
         Card(

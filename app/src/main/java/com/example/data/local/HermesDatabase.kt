@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase
         HermesActionLogEntity::class,
         HermesSettingsEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class HermesDatabase : RoomDatabase() {

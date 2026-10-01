@@ -19,6 +19,17 @@ The ready-to-install debug APK is included directly in this repository:
 
 ---
 
+## 🔑 Bring Your Own Key (BYOK) - Gemini AI
+
+Hermes AI supports full **BYOK** (Bring Your Own Key) directly within the app settings:
+* Open the **Triggers & Settings** tab in the app.
+* Enter your personal Gemini API key under **Bring Your Own Key (BYOK)**.
+* Tap **Test Key** to validate connectivity and quota.
+* Tap **Save Key** to persist it securely on your device.
+* Tap **Clear BYOK & Revert to App Default Key** at any time to switch back.
+
+---
+
 ## ⚡ Retrofit Telegram Bot Architecture
 
 Hermes AI uses the **Square Retrofit 2** library paired with **Moshi** (`converter-moshi`) and **OkHttp 3** for all interactions with the Telegram Bot API:
