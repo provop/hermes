@@ -208,7 +208,9 @@ fun HermesBridgeScreen(
                             autoSpeak = settings?.autoSpeakResponses ?: true,
                             pitch = settings?.speechPitch ?: 1.0f,
                             rate = settings?.speechRate ?: 1.05f,
-                            customApiKey = settings?.customGeminiApiKey ?: ""
+                            customApiKey = settings?.customGeminiApiKey ?: "",
+                            selectedModel = settings?.selectedModel ?: "gemini-2.5-flash-native-audio-preview-12-2025",
+                            extendedThinking = settings?.extendedThinkingEnabled ?: true
                         )
                     },
                     label = {
@@ -323,7 +325,9 @@ fun HermesBridgeScreen(
                     autoSpeak = settings?.autoSpeakResponses ?: true,
                     pitch = settings?.speechPitch ?: 1.0f,
                     rate = settings?.speechRate ?: 1.05f,
-                    customApiKey = settings?.customGeminiApiKey ?: ""
+                    customApiKey = settings?.customGeminiApiKey ?: "",
+                    selectedModel = settings?.selectedModel ?: "gemini-2.5-flash-native-audio-preview-12-2025",
+                    extendedThinking = settings?.extendedThinkingEnabled ?: true
                 )
             },
             shape = RoundedCornerShape(12.dp),

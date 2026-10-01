@@ -19,13 +19,19 @@ The ready-to-install debug APK is included directly in this repository:
 
 ---
 
-## 🔑 Bring Your Own Key (BYOK) - Gemini AI
+## 🔑 Bring Your Own Key (BYOK) & AI Model Engine
 
-Hermes AI supports full **BYOK** (Bring Your Own Key) directly within the app settings:
+Hermes AI supports full **BYOK** (Bring Your Own Key) and custom AI model selection directly within the app settings:
 * Open the **Triggers & Settings** tab in the app.
 * Enter your personal Gemini API key under **Bring Your Own Key (BYOK)**.
-* Tap **Test Key** to validate connectivity and quota.
-* Tap **Save Key** to persist it securely on your device.
+* **Model Engine Selection**:
+  * **Gemini Live 3.8 Extended Thinking (`gemini-live-3.8-extended-thinking`)**: Activates deep multi-step chain-of-thought reasoning with `thinkingConfig` (`thinkingLevel: "high"`) for maximum intelligence, complex tool calling, and surrounding interpretation.
+  * **Gemini Live Native Audio (`gemini-2.5-flash-native-audio-preview-12-2025`)**: Bidirectional low-latency speech & conversational audio.
+  * **Gemini 3.1 Pro (`gemini-3.1-pro-preview`)**: Deep STEM reasoning & advanced multi-turn task planning.
+  * **Gemini 3.5 Flash (`gemini-3.5-flash`)**: Fast general-purpose intelligence.
+* **Extended Thinking Mode**: High reasoning budget toggle (`thinkingConfig`) to let Hermes think through complex device operations before answering.
+* Tap **Test Model & Key** to validate connectivity and quota.
+* Tap **Save Config** to persist it securely on your device.
 * Tap **Clear BYOK & Revert to App Default Key** at any time to switch back.
 
 ---
@@ -55,16 +61,36 @@ Hermes AI uses the **Square Retrofit 2** library paired with **Moshi** (`convert
 
 ---
 
-## 🎙️ Hardware Triggers & Quick Access
+## 🎙️ Hardware Triggers, Screen Vision & Dynamic Circular Overlay
 
+Instead of pulling the entire heavy app into the foreground, invoking any hardware trigger opens the **Dynamic Circular Overlay (`HermesPopupActivity`)** directly on top of your current screen:
+* **7-State Adaptive Instrument**:
+  1. `CIRCULAR_LISTENING`: Glowing multi-ring gyroscopic orb with real-time waveform decibel feedback and speech-to-text transcript.
+  2. `WORKING`: Dual orbital rotating ring with *"Reasoning through screen & device plan with Gemini Live 3.8 Extended Thinking"*.
+  3. `DONE`: Emerald checkmark badge with action execution details (calls, timers, alarms, torch, Telegram relay).
+  4. `REPLY`: Clean card displaying Hermes's spoken answer with audio TTS playback.
+  5. `TYPING`: Smooth pill keyboard search field with quick suggestion tags.
+  6. `ERROR`: Amber warning shield with one-tap retry button.
+  7. `MINIMIZED_CHIP`: Collapses into a floating capsule chip `[ ⚡ Hermes 3.8 👁️ ]` on the edge of the screen so your app remains 100% visible while keeping Hermes 1-tap away.
+
+### 👁️ Trigger-Activated Screen Reading (Vision Context):
+* **Automatic On-Trigger Screen Capture**: Whenever you trigger Hermes (Volume Down double-tap, Long-press power, or corner swipe), `HermesAccessibilityService` extracts the visible text hierarchy (`rootInActiveWindow`) and captures a screen snapshot (`takeScreenshot`).
+* **Visual Context Understanding**: The screen context is automatically provided to Gemini Live 3.8 Extended Thinking. You can say:
+  * *"What is on my screen right now?"*
+  * *"Summarize this article"*
+  * *"Translate this message"*
+  * *"Explain this error and tell me what to tap next"*
+* **Zero Intrusiveness**: Screen reading is **only** triggered when you deliberately press a hardware trigger, keeping battery usage and privacy strictly optimal.
+
+### Supported Triggers:
 1. **Power Button / Corner Swipe**:
    * Registered with Android's system `ACTION_ASSIST` intent.
    * In Android Settings (**Apps > Default Apps > Digital Assistant App**), choose **Hermes AI**.
-   * Long-pressing the physical Power Button or swiping diagonally from bottom screen corners instantly activates voice listening.
+   * Long-pressing the physical Power Button or swiping diagonally from bottom screen corners opens the **Dynamic Circular Overlay**.
 2. **Volume Button Hotkey**:
-   * Uses `HermesAccessibilityService` to detect a double-tap of the physical **Volume Down** key with haptic vibration feedback.
+   * Double-tapping the physical **Volume Down** key captures the screen context and opens the **Dynamic Circular Overlay** with haptic feedback.
 3. **Quick Settings Drawer Tile**:
-   * Pull down the notification shade and add the **"Hermes Listen"** tile for 1-tap listening.
+   * Pull down notification quick settings and tap **"Hermes Listen"** to open the floating circular overlay.
 
 ---
 

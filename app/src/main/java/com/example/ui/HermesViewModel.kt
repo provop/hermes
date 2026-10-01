@@ -15,6 +15,7 @@ import com.example.data.local.HermesMessageEntity
 import com.example.data.local.HermesSettingsEntity
 import com.example.device.ActionResult
 import com.example.device.DeviceActionController
+import com.example.service.ScreenContextHolder
 import com.example.service.TriggerEventBus
 import com.example.service.TriggerSource
 import com.example.voice.VoiceSpeechManager
@@ -116,6 +117,11 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
             if (existing == null) {
                 dao.saveSettings(HermesSettingsEntity())
             } else {
+                // Auto-migrate any invalid or WebSocket-only model names to valid REST models
+                val resolvedModel = geminiRepo.resolveValidModelName(existing.selectedModel)
+                if (resolvedModel != existing.selectedModel) {
+                    dao.saveSettings(existing.copy(selectedModel = resolvedModel))
+                }
                 if (existing.telegramBotToken.isNotBlank()) {
                     testTelegramConnection(existing.telegramBotToken)
                 }
@@ -163,17 +169,30 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
             val currentSettings = dao.getSettingsOnce() ?: HermesSettingsEntity()
             val mode = currentSettings.mode
 
-            // Convert image to base64 if present
+            // Convert image to base64 if present or retrieve from ScreenContextHolder
             var base64Img: String? = null
             if (environmentBitmap != null) {
                 val stream = ByteArrayOutputStream()
                 environmentBitmap.compress(Bitmap.CompressFormat.JPEG, 75, stream)
                 base64Img = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+            } else if (ScreenContextHolder.hasRecentScreenContext() && !ScreenContextHolder.latestScreenshotBase64.isNullOrBlank()) {
+                base64Img = ScreenContextHolder.latestScreenshotBase64
             }
+
+            // Augment prompt with captured screen text if present
+            val screenText = if (ScreenContextHolder.hasRecentScreenContext()) ScreenContextHolder.latestScreenText else null
+            val effectivePrompt = if (!screenText.isNullOrBlank()) {
+                "User's Current Active Screen Content:\n\"\"\"\n$screenText\n\"\"\"\n\nUser Instruction:\n$trimmed"
+            } else {
+                trimmed
+            }
+
+            // Clear one-shot screen context
+            ScreenContextHolder.clear()
 
             // If mode is strictly HERMES_RELAY and token is present, send directly to Telegram Hermes agent
             if (mode == "HERMES_RELAY" && currentSettings.telegramBotToken.isNotBlank() && currentSettings.telegramChatId.isNotBlank()) {
-                relayToTelegramHermes(trimmed, currentSettings)
+                relayToTelegramHermes(effectivePrompt, currentSettings)
                 return@launch
             }
 
@@ -182,10 +201,12 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
 
             // Query Gemini with tool calling & device control
             when (val geminiResult = geminiRepo.generateAssistantResponse(
-                prompt = trimmed,
+                prompt = effectivePrompt,
                 conversationHistory = history,
                 base64Image = base64Img,
-                apiKeyOverride = currentSettings.customGeminiApiKey
+                apiKeyOverride = currentSettings.customGeminiApiKey,
+                modelOverride = currentSettings.selectedModel,
+                enableExtendedThinking = currentSettings.extendedThinkingEnabled
             )) {
                 is GeminiResponse.Text -> {
                     val responseText = geminiResult.content
@@ -424,7 +445,9 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
         autoSpeak: Boolean,
         pitch: Float,
         rate: Float,
-        customApiKey: String = ""
+        customApiKey: String = "",
+        selectedModel: String = "gemini-2.5-flash-native-audio-preview-12-2025",
+        extendedThinking: Boolean = true
     ) {
         viewModelScope.launch {
             val updated = HermesSettingsEntity(
@@ -436,7 +459,9 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
                 autoSpeakResponses = autoSpeak,
                 speechPitch = pitch,
                 speechRate = rate,
-                customGeminiApiKey = customApiKey
+                customGeminiApiKey = customApiKey,
+                selectedModel = selectedModel,
+                extendedThinkingEnabled = extendedThinking
             )
             dao.saveSettings(updated)
             if (botToken.isNotBlank()) {
@@ -445,9 +470,13 @@ class HermesViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun testGeminiApiKey(key: String, onResult: (Boolean, String) -> Unit) {
+    fun testGeminiApiKey(
+        key: String,
+        modelName: String = "gemini-2.5-flash-native-audio-preview-12-2025",
+        onResult: (Boolean, String) -> Unit
+    ) {
         viewModelScope.launch {
-            val result = geminiRepo.testApiKey(key)
+            val result = geminiRepo.testApiKey(key, modelName)
             onResult(result.first, result.second)
         }
     }

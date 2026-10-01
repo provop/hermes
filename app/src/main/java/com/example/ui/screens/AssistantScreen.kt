@@ -3,6 +3,7 @@ package com.example.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,12 +47,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import com.example.HermesPopupActivity
 import com.example.ui.AssistantStatus
 import com.example.ui.HermesViewModel
 import com.example.ui.TelegramConnectionStatus
@@ -83,6 +88,7 @@ fun AssistantScreen(
     val partialTranscript by viewModel.voiceManager.partialTranscript.collectAsState()
     val telegramStatus by viewModel.telegramStatus.collectAsState()
     val settings by viewModel.settings.collectAsState()
+    val context = LocalContext.current
 
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
@@ -115,8 +121,14 @@ fun AssistantScreen(
                     color = HermesCyan,
                     letterSpacing = 1.5.sp
                 )
+                val modelName = when {
+                    settings?.selectedModel?.contains("live", ignoreCase = true) == true -> "Live 3.8"
+                    settings?.selectedModel?.contains("pro", ignoreCase = true) == true -> "Pro 3.1"
+                    else -> "Live"
+                }
+                val thinkingBadge = if (settings?.extendedThinkingEnabled != false) " [Thinking]" else ""
                 Text(
-                    text = "Mode: ${settings?.mode ?: "HYBRID"}",
+                    text = "${settings?.mode ?: "HYBRID"} • $modelName$thinkingBadge",
                     fontSize = 11.sp,
                     color = HermesTextSecondary
                 )
@@ -174,6 +186,45 @@ fun AssistantScreen(
             }
         }
 
+        // Floating Overlay Quick Launch Banner
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Trigger: Floating Popup Active",
+                fontSize = 11.sp,
+                color = HermesCyan,
+                fontWeight = FontWeight.Medium
+            )
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = HermesCyan.copy(alpha = 0.15f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, HermesCyan.copy(alpha = 0.5f)),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable {
+                        val popupIntent = Intent(context, HermesPopupActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+                        context.startActivity(popupIntent)
+                    }
+                    .testTag("open_popup_overlay_banner_button")
+            ) {
+                Text(
+                    text = "Launch Popup ↗",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = HermesCyan,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        }
+
         // Voice Orb Section
         Box(
             modifier = Modifier
@@ -211,6 +262,7 @@ fun AssistantScreen(
 
         // Quick suggested action pills
         val quickSuggestions = listOf(
+            "👁️ Read My Screen",
             "Draft email to team",
             "Call 555-0199",
             "Turn on flashlight",
@@ -226,26 +278,32 @@ fun AssistantScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             quickSuggestions.forEach { suggestion ->
+                val isScreenRead = suggestion.startsWith("👁️")
                 FilterChip(
-                    selected = false,
+                    selected = isScreenRead,
                     onClick = {
-                        viewModel.handleUserInput(suggestion)
+                        if (isScreenRead) {
+                            viewModel.handleUserInput("Read what is on my screen right now and summarize key details and next actions.")
+                        } else {
+                            viewModel.handleUserInput(suggestion)
+                        }
                     },
                     label = {
                         Text(
                             text = suggestion,
                             fontSize = 11.sp,
-                            color = HermesTextPrimary
+                            fontWeight = if (isScreenRead) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isScreenRead) HermesCyan else HermesTextPrimary
                         )
                     },
                     colors = FilterChipDefaults.filterChipColors(
-                        containerColor = HermesDarkSurface,
-                        labelColor = HermesTextPrimary
+                        containerColor = if (isScreenRead) HermesCyan.copy(alpha = 0.15f) else HermesDarkSurface,
+                        labelColor = if (isScreenRead) HermesCyan else HermesTextPrimary
                     ),
                     border = FilterChipDefaults.filterChipBorder(
                         enabled = true,
-                        selected = false,
-                        borderColor = HermesDarkCardBorder
+                        selected = isScreenRead,
+                        borderColor = if (isScreenRead) HermesCyan else HermesDarkCardBorder
                     ),
                     modifier = Modifier.testTag("suggestion_chip_${suggestion.take(8)}")
                 )

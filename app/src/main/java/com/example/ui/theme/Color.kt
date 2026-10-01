@@ -2,25 +2,35 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val HermesCyan = Color(0xFF00E5FF)
-val HermesCyanLight = Color(0xFF80F0FF)
-val HermesCyanDark = Color(0xFF00B4D8)
+// Calm Instrument Design Tokens
+val CalmCanvas = Color(0xFF111110)
+val CalmSurface1 = Color(0xFF1A1A18)
+val CalmSurface2 = Color(0xFF222220)
+val CalmHairline = Color(0xFF2A2A27)
+val CalmSignalAccent = Color(0xFFE8743B) // Desaturated Signal Orange
+val CalmTextPrimary = Color(0xFFEDEDEB)
+val CalmTextSecondary = Color(0xFF8E8E89)
+val CalmTextMuted = Color(0xFF5A5A56)
+val CalmTertiary = Color(0xFF5CD5F6)
+val CalmError = Color(0xFFFFB4AB)
+val CalmErrorContainer = Color(0xFF93000A)
+val CalmSuccess = Color(0xFF81C784)
 
-val HermesGold = Color(0xFFFFD166)
-val HermesGoldDark = Color(0xFFFFB703)
-
-val HermesDarkBackground = Color(0xFF0A0F1D)
-val HermesDarkSurface = Color(0xFF111827)
-val HermesDarkSurfaceVariant = Color(0xFF1F293D)
-val HermesDarkCardBorder = Color(0xFF2E3E5B)
-
-val HermesTextPrimary = Color(0xFFF3F4F6)
-val HermesTextSecondary = Color(0xFF9CA3AF)
-val HermesTextMuted = Color(0xFF6B7280)
-
-val HermesSuccess = Color(0xFF10B981)
-val HermesError = Color(0xFFEF4444)
-val HermesWarning = Color(0xFFF59E0B)
-
-val HermesVoiceActiveGlow = Color(0xFF00F5D4)
+// Legacy alias mappings for backward compatibility
+val HermesDarkBackground = CalmCanvas
+val HermesDarkSurface = CalmSurface1
+val HermesDarkSurfaceVariant = CalmSurface2
+val HermesDarkCardBorder = CalmHairline
+val HermesCyan = CalmSignalAccent
+val HermesCyanLight = Color(0xFFFFB596)
+val HermesCyanDark = Color(0xFFA14005)
+val HermesGold = CalmSignalAccent
+val HermesGoldDark = Color(0xFFD96328)
+val HermesTextPrimary = CalmTextPrimary
+val HermesTextSecondary = CalmTextSecondary
+val HermesTextMuted = CalmTextMuted
+val HermesSuccess = CalmSuccess
+val HermesError = CalmError
+val HermesWarning = CalmSignalAccent
+val HermesVoiceActiveGlow = CalmSignalAccent
 

@@ -5,7 +5,7 @@ import android.content.Intent
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import com.example.MainActivity
+import com.example.HermesPopupActivity
 
 class HermesQuickTileService : TileService() {
 
@@ -19,9 +19,9 @@ class HermesQuickTileService : TileService() {
         super.onClick()
         TriggerEventBus.emitTrigger(TriggerSource.QUICK_SETTINGS_TILE)
 
-        val intent = Intent(this, MainActivity::class.java).apply {
+        // Launch floating popup overlay instead of full app
+        val intent = Intent(this, HermesPopupActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(MainActivity.EXTRA_START_LISTENING, true)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

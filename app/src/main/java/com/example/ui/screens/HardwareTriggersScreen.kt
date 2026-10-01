@@ -2,8 +2,10 @@ package com.example.ui.screens
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +47,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -70,6 +74,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.BuildConfig
+import com.example.HermesPopupActivity
 import com.example.service.TriggerEventBus
 import com.example.service.TriggerSource
 import com.example.ui.HermesViewModel
@@ -108,6 +113,12 @@ fun HardwareTriggersScreen(
 
     var apiKeyInput by remember(settings) {
         mutableStateOf(settings?.customGeminiApiKey ?: "")
+    }
+    var selectedModel by remember(settings) {
+        mutableStateOf(settings?.selectedModel ?: "gemini-2.5-flash-native-audio-preview-12-2025")
+    }
+    var extendedThinking by remember(settings) {
+        mutableStateOf(settings?.extendedThinkingEnabled ?: true)
     }
     var isKeyVisible by remember { mutableStateOf(false) }
     var keyValidationMessage by remember { mutableStateOf<String?>(null) }
@@ -302,7 +313,140 @@ fun HardwareTriggersScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Model Selection Section
+                Text(
+                    text = "AI Model Engine",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = HermesGold
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                val availableModels = listOf(
+                    Triple(
+                        "Gemini 3.5 Flash (Recommended)",
+                        "gemini-3.5-flash",
+                        "Ultra-fast voice assistant with vision & device tool calling"
+                    ),
+                    Triple(
+                        "Gemini Live 3.8 Extended Thinking",
+                        "gemini-3.1-pro-preview",
+                        "Deep multi-step reasoning with thinkingConfig budget"
+                    ),
+                    Triple(
+                        "Gemini 3.1 Flash Lite",
+                        "gemini-3.1-flash-lite-preview",
+                        "Lowest latency quick voice responses"
+                    )
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    availableModels.forEach { (label, modelId, desc) ->
+                        val isSelected = selectedModel == modelId
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isSelected) HermesCyan.copy(alpha = 0.12f) else HermesDarkSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(
+                                    1.dp,
+                                    if (isSelected) HermesCyan else HermesDarkCardBorder,
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .clickable { selectedModel = modelId }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = isSelected,
+                                    onClick = { selectedModel = modelId },
+                                    colors = RadioButtonDefaults.colors(selectedColor = HermesCyan)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) HermesCyan else HermesTextPrimary
+                                    )
+                                    Text(
+                                        text = desc,
+                                        fontSize = 10.sp,
+                                        color = HermesTextSecondary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Extended Thinking Toggle
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (extendedThinking) HermesGold.copy(alpha = 0.12f) else HermesDarkSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            1.dp,
+                            if (extendedThinking) HermesGold.copy(alpha = 0.6f) else HermesDarkCardBorder,
+                            RoundedCornerShape(10.dp)
+                        )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Extended Thinking Mode",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (extendedThinking) HermesGold else HermesTextPrimary
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = if (extendedThinking) HermesGold else HermesDarkCardBorder
+                                ) {
+                                    Text(
+                                        text = if (extendedThinking) "ACTIVE" else "OFF",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color.Black,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "High thinkingLevel reasoning budget for deep multi-step device commands and agent interpretations.",
+                                fontSize = 10.sp,
+                                color = HermesTextSecondary,
+                                lineHeight = 14.sp
+                            )
+                        }
+                        Switch(
+                            checked = extendedThinking,
+                            onCheckedChange = { extendedThinking = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.Black,
+                                checkedTrackColor = HermesGold,
+                                uncheckedThumbColor = HermesTextSecondary,
+                                uncheckedTrackColor = HermesDarkSurfaceVariant
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -314,7 +458,7 @@ fun HardwareTriggersScreen(
                             if (apiKeyInput.isNotBlank()) {
                                 isKeyValidating = true
                                 keyValidationMessage = null
-                                viewModel.testGeminiApiKey(apiKeyInput) { success, msg ->
+                                viewModel.testGeminiApiKey(apiKeyInput, selectedModel) { success, msg ->
                                     isKeyValidating = false
                                     isKeyValid = success
                                     keyValidationMessage = msg
@@ -339,7 +483,7 @@ fun HardwareTriggersScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Testing...", fontSize = 11.sp, color = HermesCyan)
                         } else {
-                            Text("Test Key", fontSize = 11.sp, color = HermesCyan)
+                            Text("Test Model & Key", fontSize = 11.sp, color = HermesCyan)
                         }
                     }
 
@@ -354,9 +498,11 @@ fun HardwareTriggersScreen(
                                 autoSpeak = autoSpeakEnabled,
                                 pitch = speechPitch,
                                 rate = speechRate,
-                                customApiKey = apiKeyInput.trim()
+                                customApiKey = apiKeyInput.trim(),
+                                selectedModel = selectedModel,
+                                extendedThinking = extendedThinking
                             )
-                            keyValidationMessage = "BYOK API Key saved successfully!"
+                            keyValidationMessage = "BYOK Key & Model saved successfully!"
                             isKeyValid = true
                         },
                         shape = RoundedCornerShape(10.dp),
@@ -365,7 +511,7 @@ fun HardwareTriggersScreen(
                             .weight(1f)
                             .testTag("save_byok_key_button")
                     ) {
-                        Text("Save Key", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("Save Config", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
                 }
 
@@ -375,6 +521,8 @@ fun HardwareTriggersScreen(
                     TextButton(
                         onClick = {
                             apiKeyInput = ""
+                            selectedModel = "gemini-3.5-flash"
+                            extendedThinking = true
                             viewModel.updateSettings(
                                 botToken = settings?.telegramBotToken ?: "",
                                 chatId = settings?.telegramChatId ?: "",
@@ -383,9 +531,11 @@ fun HardwareTriggersScreen(
                                 autoSpeak = autoSpeakEnabled,
                                 pitch = speechPitch,
                                 rate = speechRate,
-                                customApiKey = ""
+                                customApiKey = "",
+                                selectedModel = "gemini-3.5-flash",
+                                extendedThinking = true
                             )
-                            keyValidationMessage = "Reverted to default BuildConfig key."
+                            keyValidationMessage = "Reverted to default BuildConfig key & model."
                             isKeyValid = true
                         },
                         modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -396,6 +546,190 @@ fun HardwareTriggersScreen(
                             color = HermesTextSecondary
                         )
                     }
+                }
+            }
+        }
+
+        // Floating Assistant Popup Overlay Card
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = HermesDarkSurface),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, HermesCyan.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = CircleShape,
+                            color = HermesCyan.copy(alpha = 0.15f),
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = null,
+                                    tint = HermesCyan,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Instant Assistant Popup Overlay",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = HermesTextPrimary
+                            )
+                            Text(
+                                text = "Non-Intrusive Floating Resolution Sheet",
+                                fontSize = 11.sp,
+                                color = HermesCyan
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = HermesSuccess.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = "ENABLED",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = HermesSuccess,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "When hardware triggers (Power Button long-press, corner swipe, Volume Down double-tap, or Quick Settings Tile) are invoked, Hermes emerges as an ultra-compact floating popup sheet over your current app or game instead of opening the full app.",
+                    fontSize = 12.sp,
+                    color = HermesTextSecondary,
+                    lineHeight = 18.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+                        val popupIntent = Intent(context, HermesPopupActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+                        context.startActivity(popupIntent)
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = HermesCyan),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("test_popup_overlay_button")
+                ) {
+                    Text(
+                        text = "🚀 Test Assistant Popup Overlay",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
+
+        // Screen Reading Vision on Trigger Card
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = HermesDarkSurface),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, HermesGold.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = CircleShape,
+                            color = HermesGold.copy(alpha = 0.15f),
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Visibility,
+                                    contentDescription = null,
+                                    tint = HermesGold,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Screen Reading Vision",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = HermesTextPrimary
+                            )
+                            Text(
+                                text = "Trigger-Activated Screen Perception",
+                                fontSize = 11.sp,
+                                color = HermesGold
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = HermesSuccess.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = "READY",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = HermesSuccess,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "When any trigger is activated, Hermes's Accessibility Service captures on-screen text and snapshots only when the trigger is pressed. Gemini Live 3.8 receives this visual context to answer questions like \"What's on my screen?\", summarize articles, or troubleshoot apps without leaving what you are doing.",
+                    fontSize = 12.sp,
+                    color = HermesTextSecondary,
+                    lineHeight = 18.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        val popupIntent = Intent(context, HermesPopupActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+                        context.startActivity(popupIntent)
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, HermesGold),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("test_screen_reading_button")
+                ) {
+                    Text(
+                        text = "👁️ Test Screen Reading with Popup",
+                        color = HermesGold,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
                 }
             }
         }

@@ -51,6 +51,17 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+
+        <!-- Floating Assistant Popup Overlay Activity -->
+        <activity
+            android:name=".HermesPopupActivity"
+            android:exported="true"
+            android:label="Hermes Assistant"
+            android:theme="@style/Theme.Hermes.Popup"
+            android:launchMode="singleTop"
+            android:excludeFromRecents="true"
+            android:windowSoftInputMode="adjustResize">
             <!-- System Assistant & Voice Command Triggers (Power Button / Gesture Assist) -->
             <intent-filter>
                 <action android:name="android.intent.action.ASSIST" />

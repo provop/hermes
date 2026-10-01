@@ -237,13 +237,30 @@ class GeminiRepository {
         return toolsArray
     }
 
-    suspend fun testApiKey(candidateKey: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+    fun resolveValidModelName(requested: String?): String {
+        val req = requested?.trim() ?: ""
+        return when {
+            req.contains("3.1", ignoreCase = true) || req.contains("pro", ignoreCase = true) -> "gemini-3.1-pro-preview"
+            req.contains("lite", ignoreCase = true) -> "gemini-3.1-flash-lite-preview"
+            req.contains("thinking", ignoreCase = true) -> "gemini-3.1-pro-preview"
+            req.contains("live", ignoreCase = true) || req.contains("native-audio", ignoreCase = true) -> "gemini-3.5-flash"
+            req == "gemini-3.5-flash" || req == "gemini-3.1-pro-preview" || req == "gemini-3.1-flash-lite-preview" -> req
+            req.isNotBlank() -> req
+            else -> "gemini-3.5-flash"
+        }
+    }
+
+    suspend fun testApiKey(
+        candidateKey: String,
+        modelName: String = "gemini-3.5-flash"
+    ): Pair<Boolean, String> = withContext(Dispatchers.IO) {
         val cleanKey = candidateKey.trim()
         if (cleanKey.isBlank()) {
             return@withContext Pair(false, "API key cannot be empty")
         }
 
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$cleanKey"
+        val targetModel = resolveValidModelName(modelName)
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/$targetModel:generateContent?key=$cleanKey"
         try {
             val requestJson = JSONObject().apply {
                 put("contents", JSONArray().apply {
@@ -264,7 +281,24 @@ class GeminiRepository {
             val responseBody = response.body?.string() ?: ""
 
             if (response.isSuccessful) {
-                Pair(true, "API key is valid and working!")
+                Pair(true, "API key valid with model '$targetModel'!")
+            } else if (targetModel != "gemini-3.5-flash") {
+                // Fallback test with gemini-3.5-flash
+                val fallbackUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$cleanKey"
+                val fbReq = Request.Builder().url(fallbackUrl).post(requestBody).build()
+                val fbResp = client.newCall(fbReq).execute()
+                if (fbResp.isSuccessful) {
+                    Pair(true, "API key valid with standard model 'gemini-3.5-flash'!")
+                } else {
+                    val fbBody = fbResp.body?.string() ?: ""
+                    val errorMsg = try {
+                        val root = JSONObject(fbBody)
+                        root.optJSONObject("error")?.optString("message") ?: "HTTP ${fbResp.code}"
+                    } catch (_: Exception) {
+                        "HTTP ${fbResp.code}: $fbBody"
+                    }
+                    Pair(false, errorMsg)
+                }
             } else {
                 val errorMsg = try {
                     val root = JSONObject(responseBody)
@@ -283,7 +317,9 @@ class GeminiRepository {
         prompt: String,
         conversationHistory: List<Pair<String, String>> = emptyList(),
         base64Image: String? = null,
-        apiKeyOverride: String? = null
+        apiKeyOverride: String? = null,
+        modelOverride: String? = null,
+        enableExtendedThinking: Boolean = true
     ): GeminiResponse = withContext(Dispatchers.IO) {
         val effectiveApiKey = if (!apiKeyOverride.isNullOrBlank()) {
             apiKeyOverride.trim()
@@ -296,7 +332,8 @@ class GeminiRepository {
             return@withContext GeminiResponse.Error("Gemini API key is not configured. Please add your own API key in Settings (BYOK) or via the Secrets panel.")
         }
 
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$effectiveApiKey"
+        val targetModel = resolveValidModelName(modelOverride)
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/$targetModel:generateContent?key=$effectiveApiKey"
 
         try {
             val contentsArray = JSONArray()
@@ -328,7 +365,7 @@ class GeminiRepository {
             currentTurn.put("parts", currentParts)
             contentsArray.put(currentTurn)
 
-            val requestJson = JSONObject().apply {
+            fun buildRequestJson(withThinking: Boolean): JSONObject = JSONObject().apply {
                 put("contents", contentsArray)
 
                 // System Instruction
@@ -345,17 +382,42 @@ class GeminiRepository {
                     })
                 })
 
-                // Generation Config
+                // Generation Config with Extended Thinking
                 put("generationConfig", JSONObject().apply {
                     put("temperature", 0.7)
                     put("topP", 0.95)
+                    if (withThinking && enableExtendedThinking && targetModel.contains("pro")) {
+                        put("thinkingConfig", JSONObject().apply {
+                            put("thinkingLevel", "high")
+                        })
+                    }
                 })
             }
 
-            val requestBody = requestJson.toString().toRequestBody(jsonMediaType)
-            val request = Request.Builder().url(url).post(requestBody).build()
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
+            var requestBody = buildRequestJson(withThinking = true).toString().toRequestBody(jsonMediaType)
+            var request = Request.Builder().url(url).post(requestBody).build()
+            var response = client.newCall(request).execute()
+            var responseBody = response.body?.string() ?: ""
+
+            // Fallback retry 1: If model doesn't support thinkingConfig
+            if (!response.isSuccessful && responseBody.contains("thinkingConfig", ignoreCase = true)) {
+                requestBody = buildRequestJson(withThinking = false).toString().toRequestBody(jsonMediaType)
+                request = Request.Builder().url(url).post(requestBody).build()
+                response = client.newCall(request).execute()
+                responseBody = response.body?.string() ?: ""
+            }
+
+            // Fallback retry 2: If requested model is not found (404) or requires WebSocket (400), automatically use gemini-3.5-flash
+            if (!response.isSuccessful && (response.code == 404 || response.code == 400 || responseBody.contains("not found", ignoreCase = true) || responseBody.contains("WebSocket", ignoreCase = true))) {
+                val fallbackUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$effectiveApiKey"
+                val fbBody = buildRequestJson(withThinking = false).toString().toRequestBody(jsonMediaType)
+                val fbReq = Request.Builder().url(fallbackUrl).post(fbBody).build()
+                val fbResp = client.newCall(fbReq).execute()
+                if (fbResp.isSuccessful) {
+                    response = fbResp
+                    responseBody = fbResp.body?.string() ?: ""
+                }
+            }
 
             if (!response.isSuccessful) {
                 return@withContext GeminiResponse.Error("Gemini API error (${response.code}): $responseBody")

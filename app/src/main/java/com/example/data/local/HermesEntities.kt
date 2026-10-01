@@ -38,5 +38,7 @@ data class HermesSettingsEntity(
     val autoSpeakResponses: Boolean = true,
     val speechPitch: Float = 1.0f,
     val speechRate: Float = 1.05f,
-    val customGeminiApiKey: String = ""
+    val customGeminiApiKey: String = "",
+    val selectedModel: String = "gemini-3.5-flash",
+    val extendedThinkingEnabled: Boolean = true
 )
